@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>MIT-style filtered wordlist — 3rd letter vowel</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <style>
+    /* simple MIT-wordlist-like plain appearance */
+    html,body { height:100%; margin:0; font-family: "Courier New", Courier, monospace; background:#fff; color:#000; }
+    .wrap { max-width:900px; margin:2rem auto; padding:1rem; }
+    h1 { font-size:1rem; margin:0 0 1rem 0; font-weight:normal; }
+    p.small { font-size:.9rem; margin:0 0 1rem 0; color:#333; }
+    pre { white-space:pre-wrap; word-break:break-word; font-family:inherit; font-size:0.95rem; line-height:1.4; }
+    .controls { margin:1rem 0; }
+    button, a.button { font-family:inherit; padding:.4rem .6rem; border-radius:6px; border:1px solid #888; background:#f6f6f6; text-decoration:none; color:inherit; cursor:pointer; }
+    .error { color:crimson; margin-top:1rem; }
+    footer { margin-top:2rem; font-size:.85rem; color:#444; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>Filtered wordlist — words &gt; 3 letters with a vowel as the 3rd letter</h1>
+    <p class="small">Source: <code>https://www.mit.edu/~ecprice/wordlist.10000</code>. The list below is fetched, filtered, alphabetized, and shown one word per line. Use the Download button to save the file.</p>
+
+    <div class="controls">
+      <button id="reloadBtn">Fetch &amp; refresh</button>
+      <a id="downloadLink" class="button" href="#" download="filtered-wordlist.txt">Download .txt</a>
+      <span id="count" style="margin-left:1rem;"></span>
+    </div>
+
+    <pre id="output">Loading… (fetching source)</pre>
+    <div id="errmsg" class="error" role="alert" aria-live="polite"></div>
+
+    <footer>
+      Tip: If your browser blocks cross-origin fetch when opened via file://, host this file on GitHub Pages or any static server (or serve locally with a simple HTTP server).
+    </footer>
+  </div>
+
+  <script>
+    // Configuration
+    const SOURCE_URL = './speakerslx.txt';
+    const vowels = new Set(['a','e','i','o','u']);
+
+    async function fetchAndFilter() {
+      const out = document.getElementById('output');
+      const err = document.getElementById('errmsg');
+      const countSpan = document.getElementById('count');
+      out.textContent = 'Loading… (fetching source)';
+      err.textContent = '';
+      countSpan.textContent = '';
+
+      try {
+        const resp = await fetch(SOURCE_URL);
+        if (!resp.ok) throw new Error('Fetch failed: ' + resp.status + ' ' + resp.statusText);
+        const text = await resp.text();
+
+        // split into lines robustly (handles CRLF or LF)
+        const lines = text.split(/\r?\n/).map(s => s.trim()).filter(Boolean);
+
+        // filter: length > 3 (i.e., at least 4 letters) and third letter is vowel
+        const filtered = lines.filter(w => {
+          if (w.length <= 3) return false;
+          // ensure third character exists and is a letter; check lowercase
+          const ch = w.charAt(2).toLowerCase();
+          return vowels.has(ch);
+        });
+
+        // sort alphabetically (case-insensitive)
+        filtered.sort((a,b) => a.toLowerCase().localeCompare(b.toLowerCase(), undefined, {sensitivity:'base'}));
+
+        // display one-per-line
+        if (filtered.length === 0) {
+          out.textContent = '(No words matched.)';
+        } else {
+          out.textContent = filtered.join('\n');
+        }
+
+        // update download link with blob
+        const blob = new Blob([filtered.join('\n')], {type: 'text/plain;charset=utf-8'});
+        const url = URL.createObjectURL(blob);
+        const dl = document.getElementById('downloadLink');
+        dl.href = url;
+        dl.download = 'filtered-wordlist.txt';
+
+        countSpan.textContent = filtered.length.toLocaleString() + ' words';
+      } catch (e) {
+        out.textContent = '';
+        err.textContent = 'Error: ' + e.message + '. If this is a CORS or network issue, try hosting this HTML on GitHub Pages or a local HTTP server.';
+        console.error(e);
+      }
+    }
+
+    document.getElementById('reloadBtn').addEventListener('click', fetchAndFilter);
+
+    // run on load
+    fetchAndFilter();
+  </script>
+</body>
+</html>
